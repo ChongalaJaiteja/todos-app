@@ -1,4 +1,3 @@
-const e = require("express");
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
@@ -18,7 +17,7 @@ const userSchema = new Schema(
             lowercase: true,
             trim: true,
         },
-        password: { type: String, required: true },
+        password: { type: String },
         fullName: {
             type: String,
             trim: true,
@@ -26,7 +25,6 @@ const userSchema = new Schema(
         },
         avatar: {
             type: String, // cloudinary url
-            required: true,
         },
         createdAt: { type: Date, default: Date.now },
         updatedAt: { type: Date, default: Date.now },

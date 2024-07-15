@@ -1,3 +1,46 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    body {
+        @apply m-0 box-border bg-primary p-0 font-app text-primary transition-colors duration-300 ease-linear;
+    }
+
+    * {
+        @apply m-0 box-border p-0;
+    }
+
+    .light {
+        --clr: black;
+        --bg-clr: white;
+        --container-bg-clr: #f5f5f5;
+        --header-bg-clr: white;
+        --input-bg-clr: white;
+        --primary-text: #333333;
+        --second-text: #666666;
+        --header-text: #222222;
+        --border-clr: hsl(0, 1%, 56%);
+        --divide-line-clr: #dddddd;
+        --input-text-clr: black;
+        --placeholder-text-clr: #888888;
+        --input-border-clr: #bfbfbfbf;
+        --link-clr: #007bff;
+    }
+    .dark {
+        --clr: white;
+        --bg-clr: #272829;
+        --container-bg-clr: #1e1e1e;
+        --header-bg-clr: #272829;
+        --input-bg-clr: #333333;
+        --primary-text: #ffffff;
+        --second-text: #cccccc;
+        --header-text: #ffffff;
+        --border-clr: grey;
+        --divide-line-clr: #444444;
+        --input-text-clr: #ffffff;
+        --placeholder-text-clr: #888888;
+        --input-border-clr: #555555;
+        --link-clr: rgb(57, 153, 255);
+    }
+}

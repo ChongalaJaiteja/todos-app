@@ -1,3 +1,4 @@
+require("dotenv").config({ path: "../.env" });
 const express = require("express");
 app = express();
 const cors = require("cors");
@@ -12,6 +13,6 @@ app.use(
 const userRouter = require("./routes/user.routes");
 
 // router declarations
-app.use("/api/v1/users", userRouter);
+app.use("/api/v1/user", userRouter);
 
 exports.app = app;
