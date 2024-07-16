@@ -1,7 +1,11 @@
 /** @type {import('tailwindcss').Config} */
+import fluid, { extract, screens, fontSize } from "fluid-tailwind";
 
 export default {
-    content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+    content: {
+        files: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+        extract,
+    },
     theme: {
         extend: {
             fontFamily: {
@@ -24,7 +28,9 @@ export default {
                 input: "var(--input-bg-clr)",
             },
         },
+        screens,
+        fontSize,
     },
-    plugins: [],
+    plugins: [fluid],
     darkMode: "class",
 };

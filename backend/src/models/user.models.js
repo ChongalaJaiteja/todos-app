@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt"); // Import bcrypt
 const { Schema } = mongoose;
 
 const userSchema = new Schema(
@@ -21,7 +22,6 @@ const userSchema = new Schema(
         fullName: {
             type: String,
             trim: true,
-            required: true,
         },
         avatar: {
             type: String, // cloudinary url
@@ -76,4 +76,4 @@ userSchema.methods.generateRefreshToken = function () {
     );
 };
 
-module.exports = mongoose.model("User", userSchema);
+exports.User = mongoose.model("User", userSchema);

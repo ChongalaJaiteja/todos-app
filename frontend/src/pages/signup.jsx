@@ -96,7 +96,7 @@ const SignUp = () => {
     };
 
     return (
-        <div className="flex min-h-screen flex-col justify-center p-4 lg:flex-row lg:items-center lg:justify-around lg:gap-4 lg:p-10">
+        <div className="flex min-h-screen flex-col justify-center ~p-5/10 lg:flex-row lg:items-center lg:justify-around lg:gap-4">
             <div className="hidden max-w-xl lg:order-2 lg:block">
                 <img
                     src="https://img.freepik.com/free-vector/privacy-policy-concept-illustration_114360-7853.jpg?t=st=1720705229~exp=1720708829~hmac=c4b38904218d756bb47c9ae77947f724a37e0918c12cd0724618c08a06943127&w=740"
@@ -106,7 +106,9 @@ const SignUp = () => {
             </div>
 
             <div className="mx-auto w-full max-w-lg lg:max-w-md">
-                <h1 className="mb-14 text-3xl font-extrabold">Sign up</h1>
+                <h1 className="mb-14 font-extrabold ~/md:~text-lg/3xl ~lg/xl:~text-3xl/5xl">
+                    Sign up
+                </h1>
                 <div className="flex flex-col gap-4">
                     <button
                         className="text- flex items-center justify-center gap-2 rounded-lg border p-3 font-extrabold transition-colors duration-75 hover:bg-slate-100/60 hover:shadow-sm"

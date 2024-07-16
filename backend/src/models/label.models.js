@@ -9,4 +9,4 @@ const labelSchema = new Schema(
     { timestamps: true },
 );
 
-module.exports = mongoose.model("Label", labelSchema);
+exports.Label = mongoose.model("Label", labelSchema);
