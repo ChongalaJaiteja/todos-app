@@ -14,7 +14,7 @@ const OnBoard = () => {
     const INITIAL_FORM_DATA = {
         username: "",
         fullName: name,
-        avatar: avatarUrl,
+        avatar: avatarUrl || null,
     };
 
     const INITIAL_FORM_ERRORS = {
@@ -74,10 +74,14 @@ const OnBoard = () => {
                     },
                 },
             );
-            console.log(response);
+            const userData = response.data.data;
+            console.log("User registered successfully:", userData);
+            toast.success("Registered Successfully");
         } catch (error) {
-            console.error("Error creating user:", error.message);
-            toast.error("Error creating user");
+            const { response } = error;
+            const message = response?.data?.message || "Error creating user";
+            console.error("Error creating user:", message);
+            toast.error(message);
         } finally {
             setFormData(INITIAL_FORM_DATA);
             setIsLoading(false);

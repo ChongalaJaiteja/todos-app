@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt"); // Import bcrypt
 const { Schema } = mongoose;
+const jwt = require("jsonwebtoken");
 
 const userSchema = new Schema(
     {
@@ -40,7 +41,6 @@ const userSchema = new Schema(
 
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next();
-
     this.password = await bcrypt.hash(this.password, 10);
     next();
 });
@@ -56,6 +56,7 @@ userSchema.methods.generateAccessToken = function () {
             email: this.email,
             username: this.username,
             fullName: this.fullName,
+            avatar: this.avatar,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
