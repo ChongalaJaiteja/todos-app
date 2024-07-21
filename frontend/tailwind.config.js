@@ -12,6 +12,7 @@ export default {
                 app: ["Raleway", "sans-serif"],
             },
             colors: {
+                appTheme: "bg-red-500",
                 primary: "var(--clr)",
                 secondary: "var(--second-text)",
                 header: "var(--header-text)",
@@ -31,6 +32,10 @@ export default {
         screens,
         fontSize,
     },
-    plugins: [fluid],
+    plugins: [
+        fluid({
+            checkSC144: false,
+        }),
+    ],
     darkMode: "class",
 };

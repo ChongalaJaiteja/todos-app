@@ -13,6 +13,6 @@ app.use(
 const userRouter = require("./routes/user.routes");
 
 // router declarations
-app.use("/api/v1/user", userRouter);
+app.use("/api/v1/users", userRouter);
 
 exports.app = app;

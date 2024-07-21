@@ -12,6 +12,7 @@ import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 
+// TODO: check if user already sigup then give message to signin
 const initialFormData = {
     email: "",
     password: "",
@@ -44,13 +45,8 @@ const SignUp = () => {
             return;
         }
         try {
-            const userData = await createUserWithEmailAndPassword(
-                auth,
-                email,
-                password,
-            );
+            await createUserWithEmailAndPassword(auth, email, password);
             await sendEmailVerification(auth.currentUser);
-            console.log("submit", userData);
             toast.success(
                 "Verification email sent. Please check your inbox and verify your email.",
             );
@@ -63,6 +59,7 @@ const SignUp = () => {
                 }
             }, 1000);
         } catch (error) {
+            setFormData(initialFormData);
             console.error("Error signing up:", error.message);
             toast.error(error.message);
         } finally {
@@ -74,22 +71,37 @@ const SignUp = () => {
         setFormData({ ...formData, [event.target.name]: event.target.value });
     };
 
+    const checkUserExists = () => {};
+
     const handleGoogleSignUp = async () => {
         const provider = new GoogleAuthProvider();
         setIsLoading((prevState) => ({ ...prevState, google: true }));
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
-            console.log("google", result);
+            const email = user.email;
+            const avatarUrl = user.photoURL;
+            const name = user.displayName;
+            console.log("user", user);
+            if (checkUserExists()) {
+                toast.error("User already exists. Please sign in instead.");
+                return;
+            }
+
             navigate("/app/onboard", {
                 state: {
-                    email: user.email,
-                    avatarUrl: user.photoURL,
+                    email,
+                    avatarUrl,
+                    name,
                 },
             });
         } catch (error) {
+            // if (error.code === "auth/email-already-in-use") {
+            //     toast.error("User already exists. Please sign in instead.");
+            // } else {
             toast.error("Google sign-up error");
             console.error("Google sign-up error:", error);
+            // }
         } finally {
             setIsLoading((prevState) => ({ ...prevState, google: false }));
         }
@@ -106,12 +118,12 @@ const SignUp = () => {
             </div>
 
             <div className="mx-auto w-full max-w-lg lg:max-w-md">
-                <h1 className="mb-14 font-extrabold ~/md:~text-lg/3xl ~lg/xl:~text-3xl/5xl">
+                <h1 className="mb-14 font-extrabold ~/md:~text-3xl/4xl">
                     Sign up
                 </h1>
                 <div className="flex flex-col gap-4">
                     <button
-                        className="text- flex items-center justify-center gap-2 rounded-lg border p-3 font-extrabold transition-colors duration-75 hover:bg-slate-100/60 hover:shadow-sm"
+                        className="flex items-center justify-center gap-2 rounded-lg border font-extrabold transition-colors duration-75 ~text-base/lg ~p-3/4 hover:bg-slate-100/60 hover:shadow-sm"
                         onClick={handleGoogleSignUp}
                     >
                         <Loader
@@ -146,7 +158,7 @@ const SignUp = () => {
                         name="email"
                         onChange={handleOnChange}
                         value={email}
-                        className="w-full rounded-lg border border-gray-300 p-2 outline-gray-200 focus:outline"
+                        className="w-full rounded-lg border border-gray-300 outline-gray-200 ~p-2/3 placeholder:~text-base/lg focus:outline"
                         required
                     />
 
@@ -157,7 +169,7 @@ const SignUp = () => {
                             placeholder="Enter your password..."
                             onChange={handleOnChange}
                             value={password}
-                            className="w-full rounded-lg border border-gray-300 p-2 outline-gray-200 focus:outline"
+                            className="w-full rounded-lg border border-gray-300 outline-gray-200 ~p-2/3 placeholder:~text-base/lg focus:outline"
                             required
                             minLength={8}
                         />
@@ -171,14 +183,14 @@ const SignUp = () => {
 
                     <button
                         type="submit"
-                        className={`mt-2 flex items-center justify-center gap-2 rounded-xl bg-red-500 p-2.5 font-extrabold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50`}
+                        className={`mt-2 flex items-center justify-center gap-2 rounded-xl bg-red-500 font-extrabold text-white ~text-sm/lg ~p-2.5/3 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50`}
                         disabled={isLoading.submit}
                     >
                         <Loader loading={isLoading.submit} size={13} />
                         Sign up with Email
                     </button>
                 </form>
-                <p className="mt-6 text-center text-xs text-gray-500">
+                <p className="mt-6 text-center text-gray-500 ~text-xs/sm">
                     By signing up, you agree to our{" "}
                     <a href="#" className="underline">
                         Terms of Service{" "}
@@ -189,7 +201,7 @@ const SignUp = () => {
                     </a>
                     .{" "}
                 </p>
-                <p className="mt-4 text-center text-sm text-gray-600">
+                <p className="mt-4 text-center text-gray-600 ~text-sm/base">
                     Already signed up?{" "}
                     <Link
                         to={"/auth/signin"}
