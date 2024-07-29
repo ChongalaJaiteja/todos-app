@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Loader from "../components/loader";
 import { useState } from "react";
 import { LuUpload } from "react-icons/lu";
@@ -9,6 +9,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 const OnBoard = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { email, password = "", avatarUrl = "", name = "" } = location.state;
 
     const INITIAL_FORM_DATA = {
@@ -29,7 +30,7 @@ const OnBoard = () => {
     const [avatarPreview, setAvatarPreview] = useState(avatarUrl);
     const validate = () => {
         const errors = {};
-        const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+        const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,14}$/;
         const { username, fullName, avatar } = formData;
         if (!username.trim()) errors.username = "Username is required *";
         else {
@@ -74,9 +75,11 @@ const OnBoard = () => {
                     },
                 },
             );
+
             const userData = response.data.data;
             console.log("User registered successfully:", userData);
             toast.success("Registered Successfully");
+            navigate("/");
         } catch (error) {
             const { response } = error;
             const message = response?.data?.message || "Error creating user";

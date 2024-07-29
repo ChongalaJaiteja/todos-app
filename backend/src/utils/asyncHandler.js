@@ -1,4 +1,4 @@
-exports.asyncHandler = (fn) => async (request, response, next) => {
+const asyncHandler = (fn) => async (request, response, next) => {
     try {
         await fn(request, response, next);
     } catch (error) {
@@ -7,4 +7,8 @@ exports.asyncHandler = (fn) => async (request, response, next) => {
             message: error.message,
         });
     }
+};
+
+module.exports = {
+    asyncHandler,
 };

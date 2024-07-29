@@ -4,7 +4,6 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     sendPasswordResetEmail,
-    fetchSignInMethodsForEmail,
     sendEmailVerification,
     reload,
 } from "firebase/auth";
@@ -13,15 +12,18 @@ import { FaGoogle } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
+import axios from "../axios";
 
 const initialFormData = {
-    email: "",
+    identifier: "",
     password: "",
 };
 
+// TODO: complete google sign-in and forgot password functionality and add validation
+
 const SignIn = () => {
     const [formData, setFormData] = useState(initialFormData);
-    const { email, password } = formData;
+    const { identifier, password } = formData;
     const [isLoading, setIsLoading] = useState({
         submit: false,
         google: false,
@@ -29,35 +31,71 @@ const SignIn = () => {
     });
     const navigate = useNavigate();
 
+    const validateEmail = (email) =>
+        /^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$/.test(String(email).toLowerCase());
+
+    const validateUsername = (username) =>
+        /^[a-zA-Z][a-zA-Z0-9_]{2,14}$/.test(username);
+
+    const handleEmailSubmit = async (identifier) => {
+        const userCredential = await signInWithEmailAndPassword(
+            auth,
+            identifier,
+            password,
+        );
+        
+        const user = userCredential.user;
+        const uuid = user.uid;
+        console.log("User:", user, uuid);
+        await reload(user);
+        if (user.emailVerified) {
+            toast.success("Sign in successful!");
+            navigate("/");
+        } else {
+            await sendEmailVerification(user);
+            let interval = setInterval(async () => {
+                await reload(auth.currentUser);
+                if (auth.currentUser.emailVerified) {
+                    clearInterval(interval);
+                    navigate("/");
+                }
+            }, 1000);
+            toast.error(
+                "Please verify your email. A verification email has been sent to your inbox.",
+            );
+        }
+    };
+
+    const handleUsernameSubmit = async (identifier) => {
+        try {
+            const response = await axios.post("/v1/users/login", {
+                username: identifier,
+                password,
+            });
+            const { data } = response;
+            const user = data.data.user;
+            console.log(user);
+            const { message } = response.data;
+            toast.success(message);
+        } catch (error) {
+            const { message } = error.response.data;
+            console.error("Error signing in:", message);
+            toast.error(message);
+        }
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading((prevState) => ({ ...prevState, submit: true }));
         try {
-            const userCredential = await signInWithEmailAndPassword(
-                auth,
-                email,
-                password,
-            );
-
-            const user = userCredential.user;
-
-            await reload(user);
-
-            if (user.emailVerified) {
-                toast.success("Sign in successful!");
-                navigate("/");
+            if (validateEmail(identifier)) {
+                console.log("Email:", identifier);
+                await handleEmailSubmit(identifier);
+            } else if (validateUsername(identifier)) {
+                console.log("Username:", identifier);
+                await handleUsernameSubmit(identifier);
             } else {
-                await sendEmailVerification(user);
-                let interval = setInterval(async () => {
-                    await reload(auth.currentUser);
-                    if (auth.currentUser.emailVerified) {
-                        clearInterval(interval);
-                        navigate("/");
-                    }
-                }, 1000);
-                toast.error(
-                    "Please verify your email. A verification email has been sent to your inbox.",
-                );
+                toast.error("Invalid email or username");
             }
         } catch (error) {
             console.error("Error signing in:", error.message);
@@ -86,33 +124,11 @@ const SignIn = () => {
                 toast.error(
                     "No account found with this email. Please sign up first.",
                 );
-
                 return;
             }
-            // console.log(user);
-            // // Log user email for debugging
-            // console.log("User email:", user.email);
 
-            // // Check if the user already exists
-            // const signInMethods = await fetchSignInMethodsForEmail(
-            //     auth,
-            //     user.email,
-            // );
-
-            // // Log signInMethods for debugging
-            // console.log("Sign-in methods:", signInMethods);
-
-            // if (signInMethods.length === 0) {
-            //     // User is new, handle the case where the user needs to sign up first
-            //     toast.error(
-            //         "No account found with this email. Please sign up first.",
-            //     );
-            //     // Optionally redirect to sign-up page:
-            //     // navigate("/auth/signup");
-            // } else {
             toast.success("Google sign-in successful!");
             navigate("/");
-            // }
         } catch (error) {
             toast.error("Google sign-in error");
             console.error("Google sign-in error:", error);
@@ -121,14 +137,15 @@ const SignIn = () => {
         }
     };
 
+    // TODO: Implement forgot password functionality using Firebase Auth API and handleForgotPassword function below to send password reset email to user and update MOngoDB user document with new password
     const handleForgotPassword = async () => {
-        if (!email) {
+        if (!validateEmail(identifier)) {
             toast.error("Please enter your email to reset password");
             return;
         }
         setIsLoading((prevState) => ({ ...prevState, forgotPassword: true }));
         try {
-            await sendPasswordResetEmail(auth, email);
+            await sendPasswordResetEmail(auth, identifier);
             toast.success("Password reset email sent!");
         } catch (error) {
             toast.error("Error sending password reset email");
@@ -177,11 +194,11 @@ const SignIn = () => {
                 </div>
                 <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
                     <input
-                        type="email"
-                        placeholder="Enter your email..."
-                        name="email"
+                        type="text"
+                        placeholder="Enter your username or email..."
+                        name="identifier"
                         onChange={handleOnChange}
-                        value={email}
+                        value={identifier}
                         className="w-full rounded-lg border border-gray-300 outline-gray-200 ~p-2/3 placeholder:~text-base/lg focus:outline"
                         required
                     />

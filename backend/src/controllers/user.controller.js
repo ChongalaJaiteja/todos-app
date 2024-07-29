@@ -4,6 +4,7 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { deleteFile } = require("../utils/files");
+const { checkUserExistence, sanitizeUser } = require("../utils/userHelpers");
 const jwt = require("jsonwebtoken");
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -21,7 +22,39 @@ const generateAccessAndRefreshToken = async (userId) => {
     }
 };
 
-exports.registerUser = asyncHandler(async (request, response) => {
+const verifyUser = asyncHandler(async (request, response) => {
+    const { username = "", email = "", password = "" } = request.body;
+
+    if (!username && !email) {
+        throw new ApiError(400, "Username or email is required");
+    }
+
+    const user = await checkUserExistence({ username, email });
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    if (password !== "") {
+        const isPasswordValid = await user.isPasswordCorrect(password);
+        if (!isPasswordValid) {
+            throw new ApiError(401, "Invalid password");
+        }
+    }
+
+    const verifiedUser = sanitizeUser(user);
+    return response
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { user: verifiedUser },
+                "User verified successfully",
+            ),
+        );
+});
+
+const registerUser = asyncHandler(async (request, response) => {
     const { email, password, username, fullName } = request.body;
     const avatarUrlFromBody = request.body?.avatar; // Avatar URL from the body, if provided
     const avatarLocalPath = request.file?.path; // File path if a file was uploaded
@@ -31,9 +64,10 @@ exports.registerUser = asyncHandler(async (request, response) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    const existedUser = await User.findOne({
-        $or: [{ email }, { username }],
-    });
+    const existedUser = await checkUserExistence({ email, username });
+    // const existedUser = await User.findOne({
+    //     $or: [{ email }, { username }],
+    // });
     if (existedUser) {
         deleteFile(avatarLocalPath);
         throw new ApiError(409, "User with email or username already exists");
@@ -62,9 +96,8 @@ exports.registerUser = asyncHandler(async (request, response) => {
         avatar: avatarUrl,
     });
 
-    const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken -projects -collaborations",
-    );
+    const createdUser = sanitizeUser(user);
+
     if (!createdUser) {
         throw new ApiError(500, "Error registering user");
     }
@@ -75,15 +108,16 @@ exports.registerUser = asyncHandler(async (request, response) => {
         );
 });
 
-exports.loginUser = asyncHandler(async (request, response) => {
+const loginUser = asyncHandler(async (request, response) => {
     const { username, email, password } = request.body;
     if (!username && !email) {
         throw new ApiError(400, "Username or email is required");
     }
 
-    const user = await User.findOne({
-        $or: [{ username }, { email }],
-    });
+    const user = await checkUserExistence({ username, email });
+    // const user = await User.findOne({
+    //     $or: [{ username }, { email }],
+    // });
     if (!user) {
         throw new ApiError(404, "User not found");
     }
@@ -93,12 +127,12 @@ exports.loginUser = asyncHandler(async (request, response) => {
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid password");
     }
+
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
         user._id,
     );
-    const loggedInUser = await User.findById(user._id).select(
-        "-password -refreshToken -projects -collaborations",
-    );
+    // Remove sensitive data from the user object
+    const loggedInUser = sanitizeUser(user);
 
     const options = {
         httpOnly: true,
@@ -121,7 +155,7 @@ exports.loginUser = asyncHandler(async (request, response) => {
         );
 });
 
-exports.logoutUser = asyncHandler(async (request, response) => {
+const logoutUser = asyncHandler(async (request, response) => {
     await User.findByIdAndUpdate(
         request.user._id,
         {
@@ -145,7 +179,7 @@ exports.logoutUser = asyncHandler(async (request, response) => {
         .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-exports.refreshAccessToken = asyncHandler(async (request, response) => {
+const refreshAccessToken = asyncHandler(async (request, response) => {
     const incomingRefreshToken =
         request.cookie?.refreshToken || request.body?.refreshToken;
     if (!incomingRefreshToken) {
@@ -169,6 +203,7 @@ exports.refreshAccessToken = asyncHandler(async (request, response) => {
             httpOnly: true,
             secure: true,
         };
+
         const { accessToken, refreshToken: newRefreshToken } =
             await generateAccessAndRefreshToken(user._id);
         return response
@@ -189,3 +224,11 @@ exports.refreshAccessToken = asyncHandler(async (request, response) => {
         throw new ApiError(401, error?.message || "Invalid refresh token");
     }
 });
+
+module.exports = {
+    verifyUser,
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+};

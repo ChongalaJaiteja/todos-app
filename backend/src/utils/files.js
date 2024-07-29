@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const deleteFile = (filePath) => {
+exports.deleteFile = (filePath) => {
     if (!filePath || !fs.existsSync(filePath)) {
         console.log("No file path provided, skipping deletion.");
         return;
@@ -15,5 +15,3 @@ const deleteFile = (filePath) => {
         }
     });
 };
-
-module.exports = { deleteFile };

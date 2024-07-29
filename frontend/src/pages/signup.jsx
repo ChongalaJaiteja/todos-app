@@ -11,8 +11,8 @@ import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
+import axios from "../axios";
 
-// TODO: check if user already sigup then give message to signin
 const initialFormData = {
     email: "",
     password: "",
@@ -44,6 +44,7 @@ const SignUp = () => {
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
             return;
         }
+
         try {
             await createUserWithEmailAndPassword(auth, email, password);
             await sendEmailVerification(auth.currentUser);
@@ -71,7 +72,20 @@ const SignUp = () => {
         setFormData({ ...formData, [event.target.name]: event.target.value });
     };
 
-    const checkUserExists = () => {};
+    const checkUserExists = async (email) => {
+        try {
+            const response = await axios.post("/v1/users/verify", {
+                email,
+            });
+            const { success } = response.data;
+            if (success) {
+                return true;
+            }
+        } catch (error) {
+            console.error("checkUserExists error:", error);
+        }
+        return false;
+    };
 
     const handleGoogleSignUp = async () => {
         const provider = new GoogleAuthProvider();
@@ -82,8 +96,8 @@ const SignUp = () => {
             const email = user.email;
             const avatarUrl = user.photoURL;
             const name = user.displayName;
-            console.log("user", user);
-            if (checkUserExists()) {
+            const userExists = await checkUserExists(email);
+            if (userExists) {
                 toast.error("User already exists. Please sign in instead.");
                 return;
             }
