@@ -1,13 +1,15 @@
 import { useState } from "react";
 import {
-    signInWithEmailAndPassword,
     GoogleAuthProvider,
     signInWithPopup,
     sendPasswordResetEmail,
-    sendEmailVerification,
-    reload,
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import {
+    checkUserExists,
+    validateEmail,
+    validateUsername,
+} from "../utils/user";
 import { FaGoogle } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,8 +21,6 @@ const initialFormData = {
     password: "",
 };
 
-// TODO: complete google sign-in and forgot password functionality and add validation
-
 const SignIn = () => {
     const [formData, setFormData] = useState(initialFormData);
     const { identifier, password } = formData;
@@ -31,75 +31,41 @@ const SignIn = () => {
     });
     const navigate = useNavigate();
 
-    const validateEmail = (email) =>
-        /^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$/.test(String(email).toLowerCase());
-
-    const validateUsername = (username) =>
-        /^[a-zA-Z][a-zA-Z0-9_]{2,14}$/.test(username);
-
-    const handleEmailSubmit = async (identifier) => {
-        const userCredential = await signInWithEmailAndPassword(
-            auth,
-            identifier,
-            password,
-        );
-        
-        const user = userCredential.user;
-        const uuid = user.uid;
-        console.log("User:", user, uuid);
-        await reload(user);
-        if (user.emailVerified) {
-            toast.success("Sign in successful!");
-            navigate("/");
-        } else {
-            await sendEmailVerification(user);
-            let interval = setInterval(async () => {
-                await reload(auth.currentUser);
-                if (auth.currentUser.emailVerified) {
-                    clearInterval(interval);
-                    navigate("/");
-                }
-            }, 1000);
-            toast.error(
-                "Please verify your email. A verification email has been sent to your inbox.",
-            );
-        }
-    };
-
-    const handleUsernameSubmit = async (identifier) => {
-        try {
-            const response = await axios.post("/v1/users/login", {
-                username: identifier,
-                password,
-            });
-            const { data } = response;
-            const user = data.data.user;
-            console.log(user);
-            const { message } = response.data;
-            toast.success(message);
-        } catch (error) {
-            const { message } = error.response.data;
-            console.error("Error signing in:", message);
-            toast.error(message);
-        }
-    };
-
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading((prevState) => ({ ...prevState, submit: true }));
+        const isEmail = validateEmail(identifier);
+        const isUsername = validateUsername(identifier);
+        if (!isEmail && !isUsername) {
+            toast.error("Invalid email or username");
+            return;
+        }
+
+        const data = {
+            password,
+        };
+
+        if (isEmail) {
+            data.email = identifier;
+        } else {
+            data.username = identifier;
+        }
         try {
-            if (validateEmail(identifier)) {
-                console.log("Email:", identifier);
-                await handleEmailSubmit(identifier);
-            } else if (validateUsername(identifier)) {
-                console.log("Username:", identifier);
-                await handleUsernameSubmit(identifier);
+            const response = await axios.post("v1/users/login", data);
+            const { data: responseData } = response;
+            const { message } = responseData;
+            const success = responseData.success;
+            if (success) {
+                toast.success(message);
+                navigate("/");
             } else {
-                toast.error("Invalid email or username");
+                toast.error(message || "Error signing in");
             }
         } catch (error) {
-            console.error("Error signing in:", error.message);
-            toast.error(error.message);
+            const { response } = error;
+            const message = response?.data?.message;
+            console.error("Error signing in:", message);
+            toast.error(message || "Error signing in");
         } finally {
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
             setFormData(initialFormData);
@@ -110,23 +76,20 @@ const SignIn = () => {
         setFormData({ ...formData, [event.target.name]: event.target.value });
     };
 
-    const checkUserExists = () => {
-        return true;
-    };
-
     const handleGoogleSignIn = async () => {
         const provider = new GoogleAuthProvider();
         setIsLoading((prevState) => ({ ...prevState, google: true }));
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
-            if (!checkUserExists()) {
+            const email = user.email;
+            const userExists = await checkUserExists(email);
+            if (!userExists) {
                 toast.error(
                     "No account found with this email. Please sign up first.",
                 );
                 return;
             }
-
             toast.success("Google sign-in successful!");
             navigate("/");
         } catch (error) {
@@ -137,12 +100,18 @@ const SignIn = () => {
         }
     };
 
-    // TODO: Implement forgot password functionality using Firebase Auth API and handleForgotPassword function below to send password reset email to user and update MOngoDB user document with new password
+    // TODO: Implement the following functions
     const handleForgotPassword = async () => {
         if (!validateEmail(identifier)) {
             toast.error("Please enter your email to reset password");
             return;
         }
+        const userExists = await checkUserExists(identifier);
+        if (!userExists) {
+            toast.error("No account found with this email");
+            return;
+        }
+
         setIsLoading((prevState) => ({ ...prevState, forgotPassword: true }));
         try {
             await sendPasswordResetEmail(auth, identifier);

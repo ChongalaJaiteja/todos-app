@@ -1,7 +1,6 @@
 require("dotenv").config({ path: "../.env" });
 const express = require("express");
 app = express();
-const redisClient = require("./utils/redisClient");
 
 const cors = require("cors");
 const cookieParser = require("cookie-parser");

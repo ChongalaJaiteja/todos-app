@@ -4,14 +4,16 @@ import {
     GoogleAuthProvider,
     signInWithPopup,
     sendEmailVerification,
+    fetchSignInMethodsForEmail,
+    signInWithEmailAndPassword,
     reload,
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { checkUserExists, validateEmail } from "../utils/user";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import axios from "../axios";
 
 const initialFormData = {
     email: "",
@@ -36,6 +38,17 @@ const SignUp = () => {
         }, 2000);
     };
 
+    const sendAndVerifyEmail = async () => {
+        await sendEmailVerification(auth.currentUser);
+        let interval = setInterval(async () => {
+            await reload(auth.currentUser);
+            if (auth.currentUser.emailVerified) {
+                clearInterval(interval);
+                navigate("/app/onboard", { state: { email, password } });
+            }
+        }, 1000);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading((prevState) => ({ ...prevState, submit: true }));
@@ -45,24 +58,68 @@ const SignUp = () => {
             return;
         }
 
+        if (!validateEmail(email)) {
+            toast.error("Invalid email");
+            setIsLoading((prevState) => ({ ...prevState, submit: false }));
+            return;
+        }
+
         try {
             await createUserWithEmailAndPassword(auth, email, password);
-            await sendEmailVerification(auth.currentUser);
             toast.success(
                 "Verification email sent. Please check your inbox and verify your email.",
             );
             setFormData(initialFormData);
-            let interval = setInterval(async () => {
-                await reload(auth.currentUser);
-                if (auth.currentUser.emailVerified) {
-                    clearInterval(interval);
-                    navigate("/app/onboard", { state: { email, password } });
-                }
-            }, 1000);
+            await sendAndVerifyEmail();
         } catch (error) {
+            // Check if the error is due to the user already existing
+            if (error.code === "auth/email-already-in-use") {
+                // Fetch sign-in methods for the email
+                const signInMethods = await fetchSignInMethodsForEmail(
+                    auth,
+                    email,
+                );
+                if (signInMethods.includes("password")) {
+                    try {
+                        // The email is associated with a password-based account
+                        // Check if the email is verified
+                        const userCredential = await signInWithEmailAndPassword(
+                            auth,
+                            email,
+                            password,
+                        );
+                        const user = userCredential.user;
+                        if (!user.emailVerified) {
+                            // Send verification email if not verified
+                            // await sendEmailVerification(user);
+                            await sendAndVerifyEmail();
+                            toast.success(
+                                "Verification email sent. Please check your inbox and verify your email.",
+                            );
+                        } else {
+                            toast.error("User already exists please sign in.");
+                        }
+                    } catch (error) {
+                        if (error.code === "auth/wrong-password") {
+                            toast.error(
+                                "User already exists enter correct password to check email verification.",
+                            );
+                        } else {
+                            console.error("Error signing up:", error.message);
+                            toast.error(error.message || "Error signing up");
+                        }
+                    }
+                } else {
+                    // Handle other sign-in methods if needed
+                    toast.error(
+                        "User already exists with a different sign-in method.",
+                    );
+                }
+            } else {
+                console.error("Error signing up:", error.message);
+                toast.error(error.message || "Error signing up");
+            }
             setFormData(initialFormData);
-            console.error("Error signing up:", error.message);
-            toast.error(error.message);
         } finally {
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
         }
@@ -70,21 +127,6 @@ const SignUp = () => {
 
     const handleOnChange = (event) => {
         setFormData({ ...formData, [event.target.name]: event.target.value });
-    };
-
-    const checkUserExists = async (email) => {
-        try {
-            const response = await axios.post("/v1/users/verify", {
-                email,
-            });
-            const { success } = response.data;
-            if (success) {
-                return true;
-            }
-        } catch (error) {
-            console.error("checkUserExists error:", error);
-        }
-        return false;
     };
 
     const handleGoogleSignUp = async () => {
@@ -110,12 +152,8 @@ const SignUp = () => {
                 },
             });
         } catch (error) {
-            // if (error.code === "auth/email-already-in-use") {
-            //     toast.error("User already exists. Please sign in instead.");
-            // } else {
             toast.error("Google sign-up error");
             console.error("Google sign-up error:", error);
-            // }
         } finally {
             setIsLoading((prevState) => ({ ...prevState, google: false }));
         }
@@ -148,17 +186,6 @@ const SignUp = () => {
                         <FaGoogle />
                         Continue with Google
                     </button>
-                    {/* <button
-                        className="flex items-center justify-center gap-2 rounded-lg border p-3 font-extrabold transition-colors duration-75 hover:bg-slate-100/60 hover:shadow-sm"
-                        onClick={handleFacebookSignUp}
-                    >
-                        <FaFacebook />
-                        Continue with Facebook
-                    </button>
-                    <button className="flex items-center justify-center gap-2 rounded-lg border p-3 font-extrabold transition-colors duration-75 hover:bg-slate-100/60 hover:shadow-sm">
-                        <FaApple />
-                        Continue with Apple
-                    </button> */}
                 </div>
                 <div className="my-6 flex items-center">
                     <hr className="flex-grow border-t border-gray-300" />
