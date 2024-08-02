@@ -5,11 +5,7 @@ import {
     sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
-import {
-    checkUserExists,
-    validateEmail,
-    validateUsername,
-} from "../utils/user";
+import { validateEmail, validateUsername } from "../utils/user";
 import { FaGoogle } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
@@ -27,29 +23,26 @@ const SignIn = () => {
     const [isLoading, setIsLoading] = useState({
         submit: false,
         google: false,
-        forgotPassword: false,
     });
     const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading((prevState) => ({ ...prevState, submit: true }));
-        const isEmail = validateEmail(identifier);
-        const isUsername = validateUsername(identifier);
+        const trimmedPassword = password.trim();
+        const trimmedIdentifier = identifier.trim();
+        const isEmail = validateEmail(trimmedIdentifier);
+        const isUsername = validateUsername(trimmedIdentifier);
         if (!isEmail && !isUsername) {
             toast.error("Invalid email or username");
             return;
         }
 
         const data = {
-            password,
+            [isEmail ? "email" : "username"]: trimmedIdentifier,
+            password: trimmedPassword,
         };
 
-        if (isEmail) {
-            data.email = identifier;
-        } else {
-            data.username = identifier;
-        }
         try {
             const response = await axios.post("v1/users/login", data);
             const { data: responseData } = response;
@@ -68,7 +61,7 @@ const SignIn = () => {
             toast.error(message || "Error signing in");
         } finally {
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
-            setFormData(initialFormData);
+            setFormData((prev) => ({ ...prev, password: "" }));
         }
     };
 
@@ -83,15 +76,28 @@ const SignIn = () => {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
             const email = user.email;
-            const userExists = await checkUserExists(email);
-            if (!userExists) {
-                toast.error(
-                    "No account found with this email. Please sign up first.",
-                );
-                return;
+            try {
+                const response = await axios.post("v1/users/login", {
+                    email,
+                    googleSignIn: true,
+                });
+                const { data: responseData } = response;
+                const { message } = responseData;
+                const success = responseData.success;
+                if (success) {
+                    toast.success(message);
+                    navigate("/");
+                } else {
+                    toast.error(message || "Error signing in");
+                }
+            } catch (error) {
+                const { response } = error;
+                const message = response?.data?.message;
+                console.error("Error signing in:", message);
+                toast.error(message || "Error signing in");
+            } finally {
+                setIsLoading((prevState) => ({ ...prevState, google: false }));
             }
-            toast.success("Google sign-in successful!");
-            navigate("/");
         } catch (error) {
             toast.error("Google sign-in error");
             console.error("Google sign-in error:", error);
@@ -100,32 +106,33 @@ const SignIn = () => {
         }
     };
 
-    // TODO: Implement the following functions
-    const handleForgotPassword = async () => {
-        if (!validateEmail(identifier)) {
-            toast.error("Please enter your email to reset password");
-            return;
-        }
-        const userExists = await checkUserExists(identifier);
-        if (!userExists) {
-            toast.error("No account found with this email");
-            return;
-        }
+    // // TODO: Implement the following functions
+    // const handleForgotPassword = async () => {
+    //     if (!validateEmail(identifier)) {
+    //         toast.error("Please enter your email to reset password");
+    //         return;
+    //     }
 
-        setIsLoading((prevState) => ({ ...prevState, forgotPassword: true }));
-        try {
-            await sendPasswordResetEmail(auth, identifier);
-            toast.success("Password reset email sent!");
-        } catch (error) {
-            toast.error("Error sending password reset email");
-            console.error("Password reset error:", error);
-        } finally {
-            setIsLoading((prevState) => ({
-                ...prevState,
-                forgotPassword: false,
-            }));
-        }
-    };
+    //     const userExists = await checkUserExists(identifier);
+    //     if (!userExists) {
+    //         toast.error("No account found with this email");
+    //         return;
+    //     }
+
+    //     setIsLoading((prevState) => ({ ...prevState, forgotPassword: true }));
+    //     try {
+    //         await sendPasswordResetEmail(auth, identifier, actionCodeSettings);
+    //         toast.success("Password reset email sent!");
+    //     } catch (error) {
+    //         toast.error("Error sending password reset email");
+    //         console.error("Password reset error:", error);
+    //     } finally {
+    //         setIsLoading((prevState) => ({
+    //             ...prevState,
+    //             forgotPassword: false,
+    //         }));
+    //     }
+    // };
 
     return (
         <div className="flex min-h-screen flex-col justify-center ~p-5/10 lg:flex-row lg:items-center lg:justify-around lg:gap-4 lg:p-10">
@@ -182,18 +189,12 @@ const SignIn = () => {
                         required
                         minLength={8}
                     />
-                    <p
-                        onClick={handleForgotPassword}
-                        className="cursor-pointer self-end text-sm text-blue-500 hover:underline"
+                    <Link
+                        to={"/auth/forgot-password"}
+                        className="cursor-pointer self-end text-blue-500 ~text-sm/base hover:underline"
                     >
-                        <Loader
-                            loading={isLoading.forgotPassword}
-                            size={13}
-                            color="black"
-                            className="mr-2"
-                        />
                         Forgot Password?
-                    </p>
+                    </Link>
                     <button
                         type="submit"
                         className={`mt-2 flex items-center justify-center gap-2 rounded-xl bg-red-500 font-extrabold text-white ~text-sm/lg ~p-2.5/3 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50`}

@@ -86,7 +86,6 @@ const OnBoard = () => {
             console.error("Error creating user:", message);
             toast.error(message);
         } finally {
-            setFormData(INITIAL_FORM_DATA);
             setIsLoading(false);
         }
     };
@@ -98,6 +97,10 @@ const OnBoard = () => {
             setFormData((prev) => ({
                 ...prev,
                 [name]: file,
+            }));
+            setError((prev) => ({
+                ...prev,
+                [name]: "",
             }));
             setAvatarPreview(URL.createObjectURL(file));
         } else if (type !== "file") {

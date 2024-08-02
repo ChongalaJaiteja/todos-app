@@ -52,20 +52,23 @@ const SignUp = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading((prevState) => ({ ...prevState, submit: true }));
-        if (password.trim() === "") {
+        const trimmedEmail = email.trim();
+        const trimmedPassword = password.trim();
+
+        if (trimmedPassword === "") {
             toast.error("Invalid password");
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
             return;
         }
 
-        if (!validateEmail(email)) {
+        if (!validateEmail(trimmedEmail)) {
             toast.error("Invalid email");
             setIsLoading((prevState) => ({ ...prevState, submit: false }));
             return;
         }
 
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
             toast.success(
                 "Verification email sent. Please check your inbox and verify your email.",
             );
@@ -77,7 +80,7 @@ const SignUp = () => {
                 // Fetch sign-in methods for the email
                 const signInMethods = await fetchSignInMethodsForEmail(
                     auth,
-                    email,
+                    trimmedEmail,
                 );
                 if (signInMethods.includes("password")) {
                     try {
@@ -85,13 +88,12 @@ const SignUp = () => {
                         // Check if the email is verified
                         const userCredential = await signInWithEmailAndPassword(
                             auth,
-                            email,
-                            password,
+                            trimmedEmail,
+                            trimmedPassword,
                         );
+
                         const user = userCredential.user;
                         if (!user.emailVerified) {
-                            // Send verification email if not verified
-                            // await sendEmailVerification(user);
                             await sendAndVerifyEmail();
                             toast.success(
                                 "Verification email sent. Please check your inbox and verify your email.",
