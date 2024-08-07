@@ -5,22 +5,7 @@ const { uploadOnCloudinary } = require("../utils/cloudinary");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { deleteFile } = require("../utils/files");
 const { checkUserExistence, sanitizeUser } = require("../utils/userHelpers");
-const jwt = require("jsonwebtoken");
-
-const generateAccessAndRefreshToken = async (userId) => {
-    try {
-        const user = await User.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-        user.refreshToken = refreshToken;
-        await user.save({
-            validateBeforeSave: false,
-        });
-        return { accessToken, refreshToken };
-    } catch (error) {
-        throw new ApiError(500, "Error generating tokens");
-    }
-};
+const { generateAccessAndRefreshToken } = require("../utils/generateToken");
 
 const verifyUser = asyncHandler(async (request, response) => {
     const { username = "", email = "", password = "" } = request.body;
@@ -235,7 +220,7 @@ const loginUser = asyncHandler(async (request, response) => {
     if (!user) {
         throw new ApiError(404, "User not found");
     }
-    
+
     if (!googleSignIn) {
         const isPasswordValid = await user.isPasswordCorrect(password);
         if (!isPasswordValid) {
@@ -294,65 +279,13 @@ const logoutUser = asyncHandler(async (request, response) => {
         .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-const refreshAccessToken = asyncHandler(async (request, response) => {
-    const incomingRefreshToken =
-        request.cookies?.refreshToken || request.body?.refreshToken;
-
-    if (!incomingRefreshToken) {
-        throw new ApiError(401, "Unauthorized request");
-    }
-
-    try {
-        const decodedToken = jwt.verify(
-            incomingRefreshToken,
-            process.env.REFRESH_TOKEN_SECRET,
-        );
-
-        const user = await User.findById(decodedToken._id);
-        if (!user) {
-            throw new ApiError(401, "Invalid refresh token");
-        }
-        if (incomingRefreshToken !== user?.refreshToken) {
-            throw new ApiError(401, "Refresh token is expired or used");
-        }
-        const options = {
-            httpOnly: true,
-            secure: true,
-        };
-
-        const { accessToken, refreshToken: newRefreshToken } =
-            await generateAccessAndRefreshToken(user._id);
-        return response
-            .status(200)
-            .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", newRefreshToken, options)
-            .json(
-                new ApiResponse(
-                    200,
-                    {
-                        accessToken,
-                        refreshToken: newRefreshToken,
-                    },
-                    "Token refreshed successfully",
-                ),
-            );
-    } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid refresh token");
-    }
-});
-
-const validateToken = asyncHandler(async (request, response) => {
-    return response.status(200).json(new ApiResponse(200, {}, "Valid token"));
-});
 module.exports = {
     verifyUser,
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken,
     updateUserDetails,
     updatePassword,
     updateUserAvatar,
     resetPassword,
-    validateToken,
 };

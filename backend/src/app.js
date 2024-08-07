@@ -15,8 +15,9 @@ app.use(
 
 // router imports
 const userRouter = require("./routes/user.routes");
-
+const authRouter = require("./routes/auth.routes");
 // router declarations
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/auth", authRouter);
 
 exports.app = app;

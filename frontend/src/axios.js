@@ -1,32 +1,46 @@
 import axios from "axios";
-import createAuthRefreshInterceptor from "axios-auth-refresh";
 
-const instance = axios.create({
+// Create an Axios instance
+const api = axios.create({
     baseURL: "/api",
-    withCredentials: true, // This ensures cookies are sent with every request
+    withCredentials: true, // Ensures cookies are sent with every request
 });
 
-const refreshAuthLogic = async (failedRequest) => {
-    try {
-        const tokenRefreshResponse = await instance.post(
-            "/v1/users/refresh-token",
-        );
-        const { accessToken } = tokenRefreshResponse.data.data;
-        instance.defaults.headers.common["Authorization"] =
-            `Bearer ${accessToken}`;
-        failedRequest.response.config.headers["Authorization"] =
-            `Bearer ${accessToken}`;
-        return Promise.resolve();
-    } catch (error) {
-        console.log(error);
-        console.error("Error in refreshAuthLogic:", error.message);
-        // Redirect to login if refresh token is also expired
-        window.location.href = "/auth/signin";
+// Request Interceptor
+api.interceptors.request.use(
+    (config) => {
+        if (!config._retry) {
+            config._retry = false;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error),
+);
+
+// Response Interceptor
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        // Check if the error is a 401 and retry is not yet attempted
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            try {
+                // Attempt to refresh the token
+                await axios.post(
+                    "/api/v1/auth/refresh-token",
+                    {},
+                    { withCredentials: true },
+                );
+                // Retry the original request with the new token
+                return api(originalRequest);
+            } catch (refreshError) {
+                console.error("Refresh token failed:", refreshError);
+                return Promise.reject(refreshError);
+            }
+        }
         return Promise.reject(error);
-    }
-};
+    },
+);
 
-// Instantiate the interceptor (you can chain it as it returns the axios instance)
-createAuthRefreshInterceptor(instance, refreshAuthLogic);
-
-export default instance;
+export default api;
