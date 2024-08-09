@@ -18,7 +18,11 @@ const PrivateWrapper = () => {
         verifyAuth();
     }, []);
     if (isAuthenticated === null) {
-        return <Loader size={30} color="red" />;
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader size={30} color="red" />
+            </div>
+        );
     }
     return isAuthenticated ? (
         <Outlet />

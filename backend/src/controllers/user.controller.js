@@ -272,6 +272,7 @@ const logoutUser = asyncHandler(async (request, response) => {
         httpOnly: true,
         secure: true,
     };
+
     return response
         .status(200)
         .clearCookie("accessToken", options)

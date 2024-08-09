@@ -1,16 +1,11 @@
 import { useState } from "react";
-import {
-    GoogleAuthProvider,
-    signInWithPopup,
-    sendPasswordResetEmail,
-} from "firebase/auth";
-import { auth } from "../utils/firebase";
+import { useDispatch, useSelector } from "react-redux";
+import { signIn, googleSignIn } from "../store/slices/authSlice";
 import { validateEmail, validateUsername } from "../utils/user";
 import { FaGoogle } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import axios from "../axios";
 
 const initialFormData = {
     identifier: "",
@@ -20,15 +15,12 @@ const initialFormData = {
 const SignIn = () => {
     const [formData, setFormData] = useState(initialFormData);
     const { identifier, password } = formData;
-    const [isLoading, setIsLoading] = useState({
-        submit: false,
-        google: false,
-    });
+    const dispatch = useDispatch();
+    const { isLoading, googleAuthLoading } = useSelector((state) => state.auth);
     const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsLoading((prevState) => ({ ...prevState, submit: true }));
         const trimmedPassword = password.trim();
         const trimmedIdentifier = identifier.trim();
         const isEmail = validateEmail(trimmedIdentifier);
@@ -37,30 +29,17 @@ const SignIn = () => {
             toast.error("Invalid email or username");
             return;
         }
-
         const data = {
             [isEmail ? "email" : "username"]: trimmedIdentifier,
             password: trimmedPassword,
         };
-
         try {
-            const response = await axios.post("v1/users/login", data);
-            const { data: responseData } = response;
-            const { message } = responseData;
-            const success = responseData.success;
-            if (success) {
-                toast.success(message);
-                navigate("/");
-            } else {
-                toast.error(message || "Error signing in");
-            }
+            const response = await dispatch(signIn(data)).unwrap();
+            toast.success(response.message);
+            navigate("/", { replace: true });
         } catch (error) {
-            const { response } = error;
-            const message = response?.data?.message;
-            console.error("Error signing in:", message);
-            toast.error(message || "Error signing in");
+            toast.error(error);
         } finally {
-            setIsLoading((prevState) => ({ ...prevState, submit: false }));
             setFormData((prev) => ({ ...prev, password: "" }));
         }
     };
@@ -70,39 +49,20 @@ const SignIn = () => {
     };
 
     const handleGoogleSignIn = async () => {
-        const provider = new GoogleAuthProvider();
-        setIsLoading((prevState) => ({ ...prevState, google: true }));
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            const email = user.email;
+            const { email } = await dispatch(googleSignIn()).unwrap();
             try {
-                const response = await axios.post("v1/users/login", {
-                    email,
-                    googleSignIn: true,
-                });
-                const { data: responseData } = response;
-                const { message } = responseData;
-                const success = responseData.success;
-                if (success) {
-                    toast.success(message);
-                    navigate("/");
-                } else {
-                    toast.error(message || "Error signing in");
-                }
+                const response = await dispatch(
+                    signIn({ email, googleSignIn: true }),
+                ).unwrap();
+                toast.success(response.message);
+                navigate("/", { replace: true });
             } catch (error) {
-                const { response } = error;
-                const message = response?.data?.message;
-                console.error("Error signing in:", message);
-                toast.error(message || "Error signing in");
-            } finally {
-                setIsLoading((prevState) => ({ ...prevState, google: false }));
+                toast.error(error);
             }
         } catch (error) {
-            toast.error("Google sign-in error");
-            console.error("Google sign-in error:", error);
-        } finally {
-            setIsLoading((prevState) => ({ ...prevState, google: false }));
+            toast.error(error);
+            console.error(error);
         }
     };
 
@@ -152,10 +112,10 @@ const SignIn = () => {
                     <button
                         className="text- flex items-center justify-center gap-2 rounded-lg border font-extrabold transition-colors duration-75 ~text-base/lg ~p-3/4 hover:bg-slate-100/60 hover:shadow-sm"
                         onClick={handleGoogleSignIn}
-                        disabled={isLoading.google}
+                        disabled={googleAuthLoading}
                     >
                         <Loader
-                            loading={isLoading.google}
+                            loading={googleAuthLoading}
                             size={14}
                             color="black"
                         />
@@ -198,9 +158,9 @@ const SignIn = () => {
                     <button
                         type="submit"
                         className={`mt-2 flex items-center justify-center gap-2 rounded-xl bg-red-500 font-extrabold text-white ~text-sm/lg ~p-2.5/3 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50`}
-                        disabled={isLoading.submit}
+                        disabled={isLoading}
                     >
-                        <Loader loading={isLoading.submit} size={13} />
+                        <Loader loading={isLoading} size={13} />
                         Sign In
                     </button>
                 </form>

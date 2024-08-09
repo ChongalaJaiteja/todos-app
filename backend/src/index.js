@@ -1,6 +1,6 @@
 const { app } = require("./app");
 require("dotenv").config({ path: "../.env" });
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 5001;
 const connectDb = require("./db");
 const redisClient = require("./utils/redisClient");
 
@@ -16,15 +16,5 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-// connectDb()
-//     .then(() => {
-//         app.listen(port, () => {
-//             console.log(`Server is running at http://localhost:${port}`);
-//         });
-//     })
-//     .catch((error) => {
-//         console.error("Error connecting to database: ", error);
-//         process.exit(1);
-//     });
 
 startServer();

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import {
     createUserWithEmailAndPassword,
     GoogleAuthProvider,
@@ -10,6 +11,7 @@ import {
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
 import { checkUserExists, validateEmail } from "../utils/user";
+import { googleSignIn, googleSignUp } from "../store/slices/authSlice";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
@@ -21,13 +23,11 @@ const initialFormData = {
 };
 
 const SignUp = () => {
+    const dispatch = useDispatch();
+    const { isLoading, googleAuthLoading } = useSelector((state) => state.auth);
     const [formData, setFormData] = useState(initialFormData);
     const { email, password } = formData;
     const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState({
-        submit: false,
-        google: false,
-    });
 
     const navigate = useNavigate();
 
@@ -51,24 +51,25 @@ const SignUp = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsLoading((prevState) => ({ ...prevState, submit: true }));
         const trimmedEmail = email.trim();
         const trimmedPassword = password.trim();
 
         if (trimmedPassword === "") {
             toast.error("Invalid password");
-            setIsLoading((prevState) => ({ ...prevState, submit: false }));
             return;
         }
 
         if (!validateEmail(trimmedEmail)) {
             toast.error("Invalid email");
-            setIsLoading((prevState) => ({ ...prevState, submit: false }));
             return;
         }
 
         try {
-            await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
+            await createUserWithEmailAndPassword(
+                auth,
+                trimmedEmail,
+                trimmedPassword,
+            );
             toast.success(
                 "Verification email sent. Please check your inbox and verify your email.",
             );
@@ -122,8 +123,6 @@ const SignUp = () => {
                 toast.error(error.message || "Error signing up");
             }
             setFormData(initialFormData);
-        } finally {
-            setIsLoading((prevState) => ({ ...prevState, submit: false }));
         }
     };
 
@@ -132,34 +131,44 @@ const SignUp = () => {
     };
 
     const handleGoogleSignUp = async () => {
-        const provider = new GoogleAuthProvider();
-        setIsLoading((prevState) => ({ ...prevState, google: true }));
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            const email = user.email;
-            const avatarUrl = user.photoURL;
-            const name = user.displayName;
-            const userExists = await checkUserExists(email);
-            if (userExists) {
-                toast.error("User already exists. Please sign in instead.");
-                return;
-            }
-
-            navigate("/app/onboard", {
-                state: {
-                    email,
-                    avatarUrl,
-                    name,
-                },
-            });
+            const response = await dispatch(googleSignUp()).unwrap();
+            toast.success("Google sign-up successful");
+            navigate("/app/onboard", { state: { ...response } });
         } catch (error) {
-            toast.error("Google sign-up error");
-            console.error("Google sign-up error:", error);
-        } finally {
-            setIsLoading((prevState) => ({ ...prevState, google: false }));
+            toast.error(error || "Google sign-up error");
         }
     };
+
+    // const handleGoogleSignUp = async () => {
+    //     const provider = new GoogleAuthProvider();
+    //     setIsLoading((prevState) => ({ ...prevState, google: true }));
+    //     try {
+    //         const result = await signInWithPopup(auth, provider);
+    //         const user = result.user;
+    //         const email = user.email;
+    //         const avatarUrl = user.photoURL;
+    //         const name = user.displayName;
+    //         const userExists = await checkUserExists(email);
+    //         if (userExists) {
+    //             toast.error("User already exists. Please sign in instead.");
+    //             return;
+    //         }
+
+    //         navigate("/app/onboard", {
+    //             state: {
+    //                 email,
+    //                 avatarUrl,
+    //                 name,
+    //             },
+    //         });
+    //     } catch (error) {
+    //         toast.error("Google sign-up error");
+    //         console.error("Google sign-up error:", error);
+    //     } finally {
+    //         setIsLoading((prevState) => ({ ...prevState, google: false }));
+    //     }
+    // };
 
     return (
         <div className="flex min-h-screen flex-col justify-center ~p-5/10 lg:flex-row lg:items-center lg:justify-around lg:gap-4">
@@ -181,7 +190,7 @@ const SignUp = () => {
                         onClick={handleGoogleSignUp}
                     >
                         <Loader
-                            loading={isLoading.google}
+                            loading={googleAuthLoading}
                             size={14}
                             color="black"
                         />
@@ -227,9 +236,9 @@ const SignUp = () => {
                     <button
                         type="submit"
                         className={`mt-2 flex items-center justify-center gap-2 rounded-xl bg-red-500 font-extrabold text-white ~text-sm/lg ~p-2.5/3 hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50`}
-                        disabled={isLoading.submit}
+                        disabled={isLoading}
                     >
-                        <Loader loading={isLoading.submit} size={13} />
+                        <Loader loading={isLoading} size={13} />
                         Sign up with Email
                     </button>
                 </form>
