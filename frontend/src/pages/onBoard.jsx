@@ -4,14 +4,16 @@ import { useState } from "react";
 import { LuUpload } from "react-icons/lu";
 import { MdOutlineDone } from "react-icons/md";
 import { twMerge } from "tailwind-merge";
-import axios from "../axios";
 import toast, { Toaster } from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser } from "../store/slices/userSlice";
 
 const OnBoard = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { isLoading } = useSelector((state) => state.user);
     const { email, password = "", avatarUrl = "", name = "" } = location.state;
-
     const INITIAL_FORM_DATA = {
         username: "",
         fullName: name,
@@ -24,7 +26,6 @@ const OnBoard = () => {
         avatar: "",
     };
 
-    const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState(INITIAL_FORM_DATA);
     const [error, setError] = useState(INITIAL_FORM_ERRORS);
     const [avatarPreview, setAvatarPreview] = useState(avatarUrl);
@@ -58,35 +59,19 @@ const OnBoard = () => {
             }));
             return;
         }
-        setIsLoading(true);
         try {
-            const formDataToSend = new FormData();
-            formDataToSend.append("username", formData.username);
-            formDataToSend.append("fullName", formData.fullName);
-            formDataToSend.append("avatar", formData.avatar);
-            formDataToSend.append("email", email);
-            formDataToSend.append("password", password);
-            const response = await axios.post(
-                "/v1/users/register",
-                formDataToSend,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                },
-            );
-
-            const userData = response.data.data;
-            console.log("User registered successfully:", userData);
-            toast.success("Registered Successfully");
+            const response = await dispatch(
+                registerUser({
+                    ...formData,
+                    email,
+                    password,
+                }),
+            ).unwrap();
+            toast.success(response.message);
             navigate("/");
         } catch (error) {
-            const { response } = error;
-            const message = response?.data?.message || "Error creating user";
-            console.error("Error creating user:", message);
-            toast.error(message);
-        } finally {
-            setIsLoading(false);
+            console.error("Error creating user:", error);
+            toast.error(error || "Error creating user");
         }
     };
 

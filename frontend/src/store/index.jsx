@@ -1,13 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
 import themeReducer from "./slices/themeSlice";
 import authReducer from "./slices/authSlice";
-import signinReducer from "./slices/signinSlice";
+import userReducer from "./slices/userSlice";
 
 const store = configureStore({
     reducer: {
-        // todo,
         auth: authReducer,
-        signin: signinReducer,
+        user: userReducer,
         theme: themeReducer,
     },
 });

@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import axios from "../axios";
 import Loader from "../components/loader";
+import { useSelector } from "react-redux";
 
 const PrivateWrapper = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(null);
+    const { isLoggedIn } = useSelector((state) => state.user);
+
     const verifyAuth = async () => {
         try {
             const response = await axios.get("/v1/auth/validate-token");
@@ -16,7 +19,7 @@ const PrivateWrapper = () => {
     };
     useEffect(() => {
         verifyAuth();
-    }, []);
+    }, [isLoggedIn]);
     if (isAuthenticated === null) {
         return (
             <div className="flex h-screen items-center justify-center">

@@ -1,17 +1,11 @@
 import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
-    createUserWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
-    sendEmailVerification,
-    fetchSignInMethodsForEmail,
     signInWithEmailAndPassword,
-    reload,
 } from "firebase/auth";
-import { auth } from "../utils/firebase";
-import { checkUserExists, validateEmail } from "../utils/user";
-import { googleSignIn, googleSignUp } from "../store/slices/authSlice";
+import { auth, sendAndVerifyEmail } from "../utils/firebase";
+import { validateEmail } from "../utils/user";
+import {googleSignUp, signUp } from "../store/slices/authSlice";
 import { FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import Loader from "../components/loader";
 import { Link, useNavigate } from "react-router-dom";
@@ -38,17 +32,6 @@ const SignUp = () => {
         }, 2000);
     };
 
-    const sendAndVerifyEmail = async () => {
-        await sendEmailVerification(auth.currentUser);
-        let interval = setInterval(async () => {
-            await reload(auth.currentUser);
-            if (auth.currentUser.emailVerified) {
-                clearInterval(interval);
-                navigate("/app/onboard", { state: { email, password } });
-            }
-        }, 1000);
-    };
-
     const handleSubmit = async (event) => {
         event.preventDefault();
         const trimmedEmail = email.trim();
@@ -65,25 +48,25 @@ const SignUp = () => {
         }
 
         try {
-            await createUserWithEmailAndPassword(
-                auth,
-                trimmedEmail,
-                trimmedPassword,
-            );
-            toast.success(
-                "Verification email sent. Please check your inbox and verify your email.",
-            );
+            const response = await dispatch(
+                signUp({
+                    email: trimmedEmail,
+                    password: trimmedPassword,
+                    navigate,
+                }),
+            ).unwrap();
             setFormData(initialFormData);
-            await sendAndVerifyEmail();
-        } catch (error) {
-            // Check if the error is due to the user already existing
-            if (error.code === "auth/email-already-in-use") {
-                // Fetch sign-in methods for the email
-                const signInMethods = await fetchSignInMethodsForEmail(
-                    auth,
-                    trimmedEmail,
-                );
-                if (signInMethods.includes("password")) {
+            toast.success(response);
+        } catch (rejectedValueOrSerializedError) {
+            if (
+                rejectedValueOrSerializedError?.error?.code ==
+                "auth/email-already-in-use"
+            ) {
+                if (
+                    rejectedValueOrSerializedError?.signInMethods.includes(
+                        "password",
+                    )
+                ) {
                     try {
                         // The email is associated with a password-based account
                         // Check if the email is verified
@@ -95,7 +78,11 @@ const SignUp = () => {
 
                         const user = userCredential.user;
                         if (!user.emailVerified) {
-                            await sendAndVerifyEmail();
+                            await sendAndVerifyEmail(
+                                trimmedEmail,
+                                trimmedPassword,
+                                navigate,
+                            );
                             toast.success(
                                 "Verification email sent. Please check your inbox and verify your email.",
                             );
@@ -113,16 +100,16 @@ const SignUp = () => {
                         }
                     }
                 } else {
-                    // Handle other sign-in methods if needed
                     toast.error(
                         "User already exists with a different sign-in method.",
                     );
                 }
             } else {
-                console.error("Error signing up:", error.message);
-                toast.error(error.message || "Error signing up");
+                toast.error(
+                    rejectedValueOrSerializedError || "Error signing up",
+                );
             }
-            setFormData(initialFormData);
+            setFormData({ ...initialFormData, password: "" });
         }
     };
 
@@ -139,36 +126,6 @@ const SignUp = () => {
             toast.error(error || "Google sign-up error");
         }
     };
-
-    // const handleGoogleSignUp = async () => {
-    //     const provider = new GoogleAuthProvider();
-    //     setIsLoading((prevState) => ({ ...prevState, google: true }));
-    //     try {
-    //         const result = await signInWithPopup(auth, provider);
-    //         const user = result.user;
-    //         const email = user.email;
-    //         const avatarUrl = user.photoURL;
-    //         const name = user.displayName;
-    //         const userExists = await checkUserExists(email);
-    //         if (userExists) {
-    //             toast.error("User already exists. Please sign in instead.");
-    //             return;
-    //         }
-
-    //         navigate("/app/onboard", {
-    //             state: {
-    //                 email,
-    //                 avatarUrl,
-    //                 name,
-    //             },
-    //         });
-    //     } catch (error) {
-    //         toast.error("Google sign-up error");
-    //         console.error("Google sign-up error:", error);
-    //     } finally {
-    //         setIsLoading((prevState) => ({ ...prevState, google: false }));
-    //     }
-    // };
 
     return (
         <div className="flex min-h-screen flex-col justify-center ~p-5/10 lg:flex-row lg:items-center lg:justify-around lg:gap-4">

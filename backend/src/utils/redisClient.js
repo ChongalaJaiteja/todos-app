@@ -8,7 +8,7 @@ const client = redis.createClient({
     },
 });
 
-client.on("connect",() => {
+client.on("connect", () => {
     console.log("Connected to redis instance!");
 });
 
