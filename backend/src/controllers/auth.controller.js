@@ -4,6 +4,10 @@ const { ApiResponse } = require("../utils/ApiResponse");
 const { asyncHandler } = require("../utils/asyncHandler");
 const jwt = require("jsonwebtoken");
 const { generateAccessAndRefreshToken } = require("../utils/generateToken");
+const {
+    accessTokenCookieOption,
+    refreshTokenCookieOption,
+} = require("../middlewares/auth.middleware");
 
 const validateToken = asyncHandler(async (_, response) => {
     return response.status(200).json(new ApiResponse(200, {}, "Valid token"));
@@ -30,17 +34,13 @@ const refreshAccessToken = asyncHandler(async (request, response) => {
         if (incomingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "Refresh token is expired or used");
         }
-        const options = {
-            httpOnly: true,
-            secure: true,
-        };
 
         const { accessToken, refreshToken: newRefreshToken } =
             await generateAccessAndRefreshToken(user._id);
         return response
             .status(200)
-            .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", newRefreshToken, options)
+            .cookie("accessToken", accessToken, accessTokenCookieOption)
+            .cookie("refreshToken", newRefreshToken, refreshTokenCookieOption)
             .json(
                 new ApiResponse(
                     200,

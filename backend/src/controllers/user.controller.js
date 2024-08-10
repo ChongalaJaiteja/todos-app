@@ -7,6 +7,11 @@ const { deleteFile } = require("../utils/files");
 const { checkUserExistence, sanitizeUser } = require("../utils/userHelpers");
 const { generateAccessAndRefreshToken } = require("../utils/generateToken");
 
+const {
+    accessTokenCookieOption,
+    refreshTokenCookieOption,
+} = require("../middlewares/auth.middleware");
+
 const verifyUser = asyncHandler(async (request, response) => {
     const { username = "", email = "", password = "" } = request.body;
 
@@ -89,15 +94,10 @@ const registerUser = asyncHandler(async (request, response) => {
         user._id,
     );
 
-    const options = {
-        httpOnly: true,
-        secure: true,
-    };
-
     return response
         .status(201)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken, accessTokenCookieOption)
+        .cookie("refreshToken", refreshToken, refreshTokenCookieOption)
         .json(
             new ApiResponse(200, createdUser, "User registered successfully"),
         );
@@ -234,14 +234,10 @@ const loginUser = asyncHandler(async (request, response) => {
     // Remove sensitive data from the user object
     const loggedInUser = sanitizeUser(user);
 
-    const options = {
-        httpOnly: true,
-        secure: true,
-    };
     return response
         .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken, accessTokenCookieOption)
+        .cookie("refreshToken", refreshToken, refreshTokenCookieOption)
         .json(
             new ApiResponse(
                 200,
@@ -268,15 +264,10 @@ const logoutUser = asyncHandler(async (request, response) => {
         },
     );
 
-    const options = {
-        httpOnly: true,
-        secure: true,
-    };
-
     return response
         .status(200)
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options)
+        .clearCookie("accessToken", accessTokenCookieOption)
+        .clearCookie("refreshToken", refreshTokenCookieOption)
         .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 

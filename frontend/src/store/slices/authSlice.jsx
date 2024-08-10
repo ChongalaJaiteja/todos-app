@@ -13,6 +13,8 @@ import { checkUserExists } from "../../utils/user";
 import { auth, sendAndVerifyEmail } from "../../utils/firebase";
 import { setUser, resetUser } from "./userSlice";
 
+import storage from "redux-persist/lib/storage";
+
 export const signIn = createAsyncThunk(
     "auth/signIn",
     async (data, { dispatch, rejectWithValue }) => {
@@ -107,9 +109,14 @@ export const signOut = createAsyncThunk(
     "auth/signOut",
     async (_, { dispatch, rejectWithValue }) => {
         try {
-            await auth.signOut();
             const response = await axios.post("/v1/users/logout", {});
+            await auth.signOut();
             dispatch(resetUser());
+            // Ensure all pending state is written to storage
+            // await persistor.flush();
+
+            // // Remove specific persisted key from storage
+            // storage.removeItem("persist:user");
             return response.data.message;
         } catch (error) {
             return rejectWithValue(
