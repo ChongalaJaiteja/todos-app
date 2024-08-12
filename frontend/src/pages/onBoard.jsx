@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import Loader from "../components/loader";
 import { useState } from "react";
 import { LuUpload } from "react-icons/lu";
@@ -13,7 +13,12 @@ const OnBoard = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { isLoading } = useSelector((state) => state.user);
-    const { email, password = "", avatarUrl = "", name = "" } = location.state;
+    const {
+        email,
+        password = "",
+        avatarUrl = "",
+        name = "",
+    } = location.state || {};
     const INITIAL_FORM_DATA = {
         username: "",
         fullName: name,
@@ -68,7 +73,7 @@ const OnBoard = () => {
                 }),
             ).unwrap();
             toast.success(response.message);
-            navigate("/");
+            navigate("/", { replace: true });
         } catch (error) {
             console.error("Error creating user:", error);
             toast.error(error || "Error creating user");
@@ -106,6 +111,11 @@ const OnBoard = () => {
     };
 
     const { username, fullName, avatar } = formData;
+
+    // If the user is not redirected from the sign up page, redirect them to the sign in page
+    if (!location.state) {
+        return <Navigate to="/auth/signin" />;
+    }
 
     return (
         <>

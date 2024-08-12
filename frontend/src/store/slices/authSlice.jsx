@@ -12,7 +12,6 @@ import {
 import { checkUserExists } from "../../utils/user";
 import { auth, sendAndVerifyEmail } from "../../utils/firebase";
 import { setUser, resetUser } from "./userSlice";
-
 import storage from "redux-persist/lib/storage";
 
 export const signIn = createAsyncThunk(

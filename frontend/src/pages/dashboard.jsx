@@ -1,5 +1,6 @@
 import { useDispatch } from "react-redux";
 import { signOut } from "../store/slices/authSlice";
+import SideBar from "../components/sidebar";
 
 const DashBoard = () => {
     const dispatch = useDispatch();
@@ -13,12 +14,13 @@ const DashBoard = () => {
         }
     };
     return (
-        <div>
-            <h1>Dashboard</h1>
-            <button onClick={handleSignOut} className="bg-slate-600">
-                Sign Out
-            </button>
-        </div>
+        // <div>
+        //     <h1>Dashboard</h1>
+        //     <button onClick={handleSignOut} className="bg-slate-600">
+        //         Sign Out
+        //     </button>
+        // </div>
+        <SideBar />
     );
 };
 
